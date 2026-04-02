@@ -297,9 +297,41 @@ Add screenshots here later.
 Example:
 
 
-screenshots/login.png
-screenshots/dashboard.png
-screenshots/chat.png
+## Login Page
+
+![Login](screenshots/login.png)
+
+
+## Submit Ticket
+
+![Submit Ticket](screenshots/submit-ticket.png)
+
+
+## My Tickets Dashboard
+
+![My Tickets](screenshots/my_tickets.png)
+
+
+## AI Support Chat
+
+![AI Chat](screenshots/chat.png)
+
+
+## AI Automation Execution
+
+![Automation](screenshots/chat_submit.png)
+
+
+## Admin Dashboard
+
+![Dashboard](screenshots/dashboard1.png)
+
+![Dashboard](screenshots/dashboard2.png)
+
+![Dashboard](screenshots/dashboard3.png)
+
+![Dashboard](screenshots/dashboard4.png)
+
 
 ---
 
