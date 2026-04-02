@@ -129,7 +129,7 @@
     };
 
     socket.onclose = function () {
-        appendMessage("system", "Chat connection closed.");
+        // Intentionally silent to avoid scary/noisy disconnect messages on normal reloads/navigation
     };
 
     formEl.addEventListener("submit", function(e) {

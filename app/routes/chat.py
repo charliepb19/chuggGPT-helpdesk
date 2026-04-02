@@ -11,6 +11,7 @@ from app.services.automation import (
     extract_automation_marker,
     remove_automation_marker,
     run_named_automation,
+    create_chat_session_for_ticket,
 )
 
 router = APIRouter()
@@ -37,9 +38,15 @@ def chat_page(ticket_id: int, request: Request, db: Session = Depends(get_db)):
     if user.role != "admin" and ticket.user_id != user.id:
         return RedirectResponse(url="/my-tickets", status_code=303)
 
-    chat_session = db.query(ChatSession).filter(ChatSession.ticket_id == ticket.id).first()
+    chat_session = (
+        db.query(ChatSession)
+        .filter(ChatSession.ticket_id == ticket.id)
+        .order_by(ChatSession.id.desc())
+        .first()
+    )
+
     if not chat_session:
-        return RedirectResponse(url="/my-tickets", status_code=303)
+        chat_session = create_chat_session_for_ticket(db, ticket)
 
     messages = (
         db.query(ChatMessage)
@@ -84,11 +91,15 @@ async def chat_websocket(websocket: WebSocket, ticket_id: int, user_id: int = Qu
             await websocket.close()
             return
 
-        chat_session = db.query(ChatSession).filter(ChatSession.ticket_id == ticket.id).first()
+        chat_session = (
+            db.query(ChatSession)
+            .filter(ChatSession.ticket_id == ticket.id)
+            .order_by(ChatSession.id.desc())
+            .first()
+        )
+
         if not chat_session:
-            await websocket.send_json({"type": "error", "message": "Chat session not found."})
-            await websocket.close()
-            return
+            chat_session = create_chat_session_for_ticket(db, ticket)
 
         while True:
             user_text = (await websocket.receive_text()).strip()

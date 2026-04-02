@@ -122,6 +122,17 @@ def run_named_automation(db: Session, ticket: Ticket, automation_name: str, trig
 
 
 def create_chat_session_for_ticket(db: Session, ticket: Ticket):
+    # Reuse existing session if one already exists for this ticket
+    existing_session = (
+        db.query(ChatSession)
+        .filter(ChatSession.ticket_id == ticket.id)
+        .order_by(ChatSession.id.desc())
+        .first()
+    )
+
+    if existing_session:
+        return existing_session
+
     session = ChatSession(
         ticket_id=ticket.id,
         user_id=ticket.user_id,
@@ -142,6 +153,7 @@ def create_chat_session_for_ticket(db: Session, ticket: Ticket):
     )
     db.add(message)
     db.commit()
+    db.refresh(message)
 
     if automation_name:
         automation_output = run_named_automation(db, ticket, automation_name, triggered_by="agent")
