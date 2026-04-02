@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <h1>My Tickets</h1>
+    <p class="kicker">Track your submitted tickets and continue troubleshooting in chat.</p>
+
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Device</th>
+                <th>Urgency</th>
+                <th>Category</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Summary</th>
+                <th>Automation Output</th>
+                <th>Created At</th>
+                <th>Chat</th>
+            </tr>
+
+            {% for ticket in tickets %}
+            <tr>
+                <td>{{ ticket.id }}</td>
+                <td>{{ ticket.device_type }}</td>
+                <td>{{ ticket.urgency }}</td>
+                <td>{{ ticket.category }}</td>
+                <td>{{ ticket.severity }}</td>
+                <td>
+                    {% if ticket.status == "Open" %}
+                        <span class="status-badge status-open">{{ ticket.status }}</span>
+                    {% elif ticket.status == "In Progress" %}
+                        <span class="status-badge status-progress">{{ ticket.status }}</span>
+                    {% elif ticket.status == "Resolved" %}
+                        <span class="status-badge status-resolved">{{ ticket.status }}</span>
+                    {% elif ticket.status == "Escalated" %}
+                        <span class="status-badge status-escalated">{{ ticket.status }}</span>
+                    {% else %}
+                        <span class="status-badge">{{ ticket.status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ ticket.summary }}</td>
+                <td>{{ ticket.automation_output }}</td>
+                <td>{{ ticket.created_at }}</td>
+                <td><a href="/chat/{{ ticket.id }}">Open Chat</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+{% endblock %}

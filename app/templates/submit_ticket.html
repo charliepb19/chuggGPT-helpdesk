@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container submit-card">
+    <h1>Submit IT Ticket</h1>
+    <p class="kicker">Create a support request for device, network, printer, login, or system issues.</p>
+
+    <div class="page-meta">
+        <div class="meta-chip"><strong>Signed in as</strong> {{ current_user.name }}</div>
+        <div class="meta-chip"><strong>Email</strong> {{ current_user.email }}</div>
+    </div>
+
+    <form method="post" action="/submit-ticket" class="ticket-form">
+        <label>Device Type</label>
+        <select name="device_type">
+            <option>Laptop</option>
+            <option>Desktop</option>
+            <option>Server</option>
+            <option>Mobile</option>
+        </select>
+
+        <label>Urgency</label>
+        <select name="urgency">
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+        </select>
+
+        <label>Issue Description</label>
+        <textarea
+            name="issue_description"
+            placeholder="Describe the issue, what you already tried, and any error messages you saw."
+            required
+        ></textarea>
+
+        <div class="form-note">
+            The more specific you are, the better ChuggGPT can classify the issue and recommend a fix.
+        </div>
+
+        <button type="submit">Submit Ticket</button>
+    </form>
+</div>
+{% endblock %}

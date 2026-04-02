@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <h1>Support Chat</h1>
+    <p class="kicker">Work through this issue with the AI support agent in real time.</p>
+
+    <div class="ticket-summary-card">
+        <div class="ticket-grid">
+            <div class="meta-chip"><strong>Ticket</strong> #{{ ticket.id }}</div>
+            <div class="meta-chip"><strong>Category</strong> {{ ticket.category.replace('_',' ').title() }}</div>
+            <div class="meta-chip"><strong>Status</strong> <span id="ticket-status">{{ ticket.status }}</span></div>
+            <div class="meta-chip"><strong>Urgency</strong> {{ ticket.urgency }}</div>
+        </div>
+
+        <div class="steps">
+            <strong>Ticket Summary:</strong><br>
+            {{ ticket.summary }}
+        </div>
+    </div>
+
+    <h2>Conversation</h2>
+
+    <div class="table-wrapper chat-shell" style="padding:18px;">
+        <div id="chat-messages">
+            {% for msg in messages %}
+            <div class="{% if msg.sender_type == 'agent' %}agent-msg{% elif msg.sender_type == 'user' %}user-msg{% else %}system-msg{% endif %}">
+                <strong>{{ msg.sender_type|capitalize }}:</strong><br>
+                <div class="message-body">{{ msg.message }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% set closed = chat_session.status == "Resolved" or chat_session.status == "Escalated" %}
+
+    <form id="chat-form" class="ticket-form" {% if closed %}style="display:none;"{% endif %}>
+        <label>Reply to the AI Support Agent</label>
+        <textarea
+            id="chat-input"
+            placeholder="Tell the agent what happened after the last step, or type 'escalate' to request a human."
+            required
+        ></textarea>
+        <div class="form-note">Tip: keep each update short so the agent can guide you one step at a time.</div>
+        <button type="submit">Send Message</button>
+    </form>
+
+    <div id="chat-closed-banner" class="steps" {% if not closed %}style="display:none;"{% endif %}>
+        This chat session is {{ chat_session.status }}.
+    </div>
+</div>
+
+<script>
+(function () {
+    const ticketId = "{{ ticket.id }}";
+    const userId = "{{ current_user.id }}";
+
+    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const socketUrl = `${protocol}://${window.location.host}/ws/chat/${ticketId}?user_id=${userId}`;
+    const socket = new WebSocket(socketUrl);
+
+    const messagesEl = document.getElementById("chat-messages");
+    const formEl = document.getElementById("chat-form");
+    const inputEl = document.getElementById("chat-input");
+    const statusEl = document.getElementById("ticket-status");
+    const closedBannerEl = document.getElementById("chat-closed-banner");
+
+    function escapeHtml(value) {
+        return value
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    function appendMessage(senderType, message) {
+        const div = document.createElement("div");
+
+        if (senderType === "agent") {
+            div.className = "agent-msg";
+        } else if (senderType === "user") {
+            div.className = "user-msg";
+        } else {
+            div.className = "system-msg";
+        }
+
+        const label = senderType.charAt(0).toUpperCase() + senderType.slice(1);
+        div.innerHTML = `<strong>${label}:</strong><br><div class="message-body">${escapeHtml(message)}</div>`;
+
+        messagesEl.appendChild(div);
+        div.scrollIntoView({ behavior: "smooth", block: "end" });
+    }
+
+    function closeChat(statusText) {
+        statusEl.textContent = statusText;
+        formEl.style.display = "none";
+        closedBannerEl.style.display = "block";
+        closedBannerEl.textContent = `This chat session is ${statusText}.`;
+    }
+
+    socket.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "message") {
+            appendMessage(data.sender_type, data.message);
+            return;
+        }
+
+        if (data.type === "system") {
+            appendMessage("system", data.message);
+            return;
+        }
+
+        if (data.type === "error") {
+            appendMessage("system", data.message);
+            formEl.style.display = "none";
+            return;
+        }
+
+        if (data.type === "status_update") {
+            statusEl.textContent = data.ticket_status;
+
+            if (data.chat_status === "Resolved" || data.chat_status === "Escalated") {
+                closeChat(data.chat_status);
+            }
+        }
+    };
+
+    socket.onclose = function () {
+        appendMessage("system", "Chat connection closed.");
+    };
+
+    formEl.addEventListener("submit", function(e) {
+        e.preventDefault();
+
+        const message = inputEl.value.trim();
+        if (!message) return;
+
+        socket.send(message);
+        inputEl.value = "";
+        inputEl.focus();
+    });
+})();
+</script>
+
+{% endblock %}

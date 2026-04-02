@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container">
+    <h1>Admin Dashboard</h1>
+    <p class="kicker">Monitor ticket volume, review AI triage results, and manage support operations in one place.</p>
+
+    <div class="stats-grid">
+        <div class="stat-card glow-card">
+            <h3>Total Tickets</h3>
+            <div class="stat-value">{{ total_tickets }}</div>
+        </div>
+
+        <div class="stat-card glow-card">
+            <h3>Showing</h3>
+            <div class="stat-value">{{ filtered_ticket_count }}</div>
+        </div>
+
+        <div class="stat-card glow-card">
+            <h3>Automation Possible</h3>
+            <div class="stat-value">{{ automation_possible_count }}</div>
+        </div>
+
+        <div class="stat-card glow-card">
+            <h3>Assigned Tickets</h3>
+            <div class="stat-value">{{ assigned_count }}</div>
+        </div>
+
+        <div class="stat-card glow-card">
+            <h3>AI Escalation Flags</h3>
+            <div class="stat-value">{{ ai_escalation_count }}</div>
+        </div>
+    </div>
+
+    <h2>Filter Tickets</h2>
+    <form method="get" action="/dashboard" class="filter-form">
+        <div class="filter-grid">
+            <div>
+                <label>Name</label>
+                <input type="text" name="search_name" value="{{ search_name }}" placeholder="Search by requester name">
+            </div>
+
+            <div>
+                <label>Status</label>
+                <select name="status_filter">
+                    <option value="">All</option>
+                    {% for status in all_statuses %}
+                    <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Category</label>
+                <select name="category_filter">
+                    <option value="">All</option>
+                    {% for category in all_categories %}
+                    <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category.replace('_',' ').title() }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label>Severity</label>
+                <select name="severity_filter">
+                    <option value="">All</option>
+                    {% for severity in all_severities %}
+                    <option value="{{ severity }}" {% if severity_filter == severity %}selected{% endif %}>{{ severity }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="button-row">
+            <button type="submit" class="primary-btn">Apply Filters</button>
+            <a href="/dashboard">Clear Filters</a>
+        </div>
+    </form>
+
+    <h2>Status Counts</h2>
+    <ul class="count-list">
+        {% for status, count in status_counts.items() %}
+        <li><strong>{{ status }}:</strong> {{ count }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Ticket Queue</h2>
+
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Device</th>
+                <th>Urgency</th>
+                <th>Category</th>
+                <th>Severity</th>
+                <th>AI Confidence</th>
+                <th>Business Impact</th>
+                <th>AI Escalate?</th>
+                <th>Status</th>
+                <th>Assignee</th>
+                <th>Summary</th>
+                <th>Suggested Steps</th>
+                <th>Suggested Automation</th>
+                <th>Automation Output</th>
+                <th>Created At</th>
+                <th>Actions</th>
+            </tr>
+
+            {% for ticket in tickets %}
+            <tr>
+                <td><span class="pill pill-soft">#{{ ticket.id }}</span></td>
+                <td>{{ ticket.name }}</td>
+                <td>{{ ticket.device_type }}</td>
+                <td><span class="pill pill-gold">{{ ticket.urgency }}</span></td>
+                <td><span class="pill pill-purple">{{ ticket.category.replace('_',' ').title() }}</span></td>
+                <td>{{ ticket.severity }}</td>
+                <td>
+                    {% if ticket.ai_confidence is not none %}
+                        {{ "%.0f"|format(ticket.ai_confidence * 100) }}%
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </td>
+                <td>{{ ticket.ai_business_impact or "N/A" }}</td>
+                <td>
+                    {% if ticket.ai_escalation_needed %}
+                        <span class="status-badge status-escalated">Yes</span>
+                    {% else %}
+                        <span class="status-badge status-resolved">No</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ticket.status == "Open" %}
+                        <span class="status-badge status-open">{{ ticket.status }}</span>
+                    {% elif ticket.status == "In Progress" %}
+                        <span class="status-badge status-progress">{{ ticket.status }}</span>
+                    {% elif ticket.status == "Resolved" %}
+                        <span class="status-badge status-resolved">{{ ticket.status }}</span>
+                    {% elif ticket.status == "Escalated" %}
+                        <span class="status-badge status-escalated">{{ ticket.status }}</span>
+                    {% else %}
+                        <span class="status-badge">{{ ticket.status }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if ticket.assigned_to_name %}
+                        {{ ticket.assigned_to_name }}
+                    {% else %}
+                        <span class="pill pill-soft">Unassigned</span>
+                    {% endif %}
+                </td>
+                <td>{{ ticket.summary }}</td>
+                <td style="white-space: pre-line;">{{ ticket.suggested_steps }}</td>
+                <td>{{ ticket.ai_suggested_automation or ticket.recommended_script or "None" }}</td>
+                <td>{{ ticket.automation_output }}</td>
+                <td>{{ ticket.created_at }}</td>
+                <td>
+                    <div class="action-group">
+                        <form method="post" action="/claim-ticket">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button class="btn-automation" type="submit">Claim</button>
+                        </form>
+
+                        <form method="post" action="/unassign-ticket">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button class="btn-delete" type="submit">Unassign</button>
+                        </form>
+
+                        <form method="post" action="/update-ticket-status">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button class="btn-progress" type="submit" name="status" value="In Progress">Start Work</button>
+                        </form>
+
+                        <form method="post" action="/update-ticket-status">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button class="btn-resolve" type="submit" name="status" value="Resolved">Resolve</button>
+                        </form>
+
+                        <form method="post" action="/update-ticket-status">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button class="btn-escalate" type="submit" name="status" value="Escalated">Escalate</button>
+                        </form>
+
+                        {% if ticket.automation_possible %}
+                        <form method="post" action="/execute-automation">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button type="submit" class="btn-automation">Execute Automation</button>
+                        </form>
+                        {% endif %}
+
+                        {% if ticket.status == "Resolved" %}
+                        <form method="post" action="/delete-ticket">
+                            <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                            <button type="submit" class="btn-delete">Delete</button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <h2>Recent Audit Log</h2>
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>Log ID</th>
+                <th>Ticket ID</th>
+                <th>Action</th>
+                <th>Details</th>
+                <th>Created At</th>
+            </tr>
+
+            {% for log in audit_logs %}
+            <tr>
+                <td>#{{ log.id }}</td>
+                <td>{{ log.ticket_id }}</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.details }}</td>
+                <td>{{ log.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+
+{% endblock %}
