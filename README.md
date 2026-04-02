@@ -1,5 +1,12 @@
 # ChuggGPT AI Helpdesk
 
+AI-Native IT Support Operations Platform
+
+## System Architecture
+
+![Architecture Diagram](screenshots/architecture-diagram.png)
+
+
 ChuggGPT AI Helpdesk is an AI-powered IT support platform built with FastAPI, WebSockets, SQLAlchemy, SQLite, Jinja2, and the OpenAI API. It helps users submit support tickets, receive AI-guided troubleshooting in real time, and enables admins to manage ticket operations through a centralized dashboard.
 
 ## Overview
