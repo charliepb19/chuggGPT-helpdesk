@@ -110,46 +110,48 @@ SQLite Database
 
 ---
 
-# Project Structure
+## Project Structure
 
-
+```
 chuggGPT-helpdesk
 │
 ├── app
-│ ├── routes
-│ │ ├── auth.py
-│ │ ├── tickets.py
-│ │ ├── dashboard.py
-│ │ └── chat.py
-│ │
-│ ├── services
-│ │ ├── ai_classifier.py
-│ │ ├── ai_triage.py
-│ │ ├── chat_agent.py
-│ │ ├── automation.py
-│ │ ├── automation_policy.py
-│ │ └── auth.py
-│ │
-│ ├── templates
-│ │ ├── base.html
-│ │ ├── login.html
-│ │ ├── signup.html
-│ │ ├── submit_ticket.html
-│ │ ├── my_tickets.html
-│ │ ├── dashboard.html
-│ │ └── chat.html
-│ │
-│ ├── static
-│ │ └── style.css
-│ │
-│ ├── database.py
-│ ├── models.py
-│ ├── main.py
-│ └── create_admin.py
+│   ├── routes
+│   │   ├── auth.py
+│   │   ├── tickets.py
+│   │   ├── dashboard.py
+│   │   └── chat.py
+│   │
+│   ├── services
+│   │   ├── ai_classifier.py
+│   │   ├── ai_triage.py
+│   │   ├── chat_agent.py
+│   │   ├── automation.py
+│   │   └── automation_policy.py
+│   │
+│   ├── templates
+│   │   ├── base.html
+│   │   ├── login.html
+│   │   ├── signup.html
+│   │   ├── submit_ticket.html
+│   │   ├── my_tickets.html
+│   │   ├── dashboard.html
+│   │   └── chat.html
+│   │
+│   ├── static
+│   │   └── style.css
+│   │
+│   ├── database.py
+│   ├── models.py
+│   ├── main.py
+│   └── create_admin.py
+│
+├── screenshots
 │
 ├── requirements.txt
 ├── README.md
 └── .gitignore
+```
 
 ---
 
