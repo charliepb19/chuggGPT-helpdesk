@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Ticket, User
+from app.models import Ticket, User, ChatSession, ChatMessage, TicketPrediction, AutomationRun
 from app.services.automation import get_dashboard_data, add_audit_log, execute_automation
 
 router = APIRouter()
@@ -71,6 +71,7 @@ def dashboard_page(
             "all_categories": data["all_categories"],
             "all_severities": data["all_severities"],
             "all_statuses": data["all_statuses"],
+            "admin_users": data["admin_users"],
             "search_name": search_name,
             "status_filter": status_filter,
             "category_filter": category_filter,
@@ -208,6 +209,14 @@ def delete_ticket(
             details=f"Resolved ticket for {ticket_name} was deleted from the dashboard.",
             ticket_id=ticket.id
         )
+
+        # Delete child records before the ticket (foreign key order matters)
+        sessions = db.query(ChatSession).filter(ChatSession.ticket_id == ticket.id).all()
+        for session in sessions:
+            db.query(ChatMessage).filter(ChatMessage.chat_session_id == session.id).delete()
+        db.query(ChatSession).filter(ChatSession.ticket_id == ticket.id).delete()
+        db.query(TicketPrediction).filter(TicketPrediction.ticket_id == ticket.id).delete()
+        db.query(AutomationRun).filter(AutomationRun.ticket_id == ticket.id).delete()
 
         db.delete(ticket)
         db.commit()

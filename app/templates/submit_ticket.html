@@ -37,7 +37,30 @@
             The more specific you are, the better ChuggGPT can classify the issue and recommend a fix.
         </div>
 
-        <button type="submit">Submit Ticket</button>
+        <button type="submit" id="submit-btn">Submit Ticket</button>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(212, 238, 255, 0.3);
+    border-top-color: #d4eeff;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+<script>
+document.querySelector(".ticket-form").addEventListener("submit", function() {
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Analysing with AI…';
+});
+</script>
 {% endblock %}

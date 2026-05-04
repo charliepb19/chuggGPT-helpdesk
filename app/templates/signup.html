@@ -1,25 +1,207 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container">
-    <h1>Sign Up</h1>
-    <p class="kicker">Create your helpdesk account.</p>
+<div class="auth-shell">
+    <div class="auth-panel">
+        <div class="auth-brand">
+            <div class="auth-brand-title">ChuggGPT</div>
+            <div class="auth-brand-sub">AI-Native IT Support</div>
+        </div>
 
-    {% if error %}
-    <p style="color: #ff8a8a; font-weight: 700;">{{ error }}</p>
-    {% endif %}
+        <div class="auth-heading">Create an account</div>
+        <p class="auth-sub">Get started with AI-powered IT support.</p>
 
-    <form method="post" action="/signup" class="ticket-form">
-        <label>Name</label>
-        <input type="text" name="name" required>
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
 
-        <label>Email</label>
-        <input type="email" name="email" required>
+        <form method="post" action="/signup" class="auth-form">
+            <div class="auth-field">
+                <label>Name</label>
+                <input type="text" name="name" placeholder="Your full name" required autofocus>
+            </div>
+            <div class="auth-field">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="you@example.com" required>
+            </div>
+            <div class="auth-field">
+                <label>Password</label>
+                <input type="password" name="password" placeholder="••••••••" required>
+            </div>
+            <button type="submit">Create Account</button>
+        </form>
 
-        <label>Password</label>
-        <input type="password" name="password" required>
-
-        <button type="submit">Create Account</button>
-    </form>
+        <p class="auth-switch">Already have an account? <a href="/login">Log in</a></p>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.auth-shell {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 32px 16px 56px;
+}
+
+.auth-panel {
+    width: 100%;
+    max-width: 460px;
+    background: #132030;
+    border-top: 3px solid #5a8ab0;
+    border-left: 3px solid #5a8ab0;
+    border-right: 3px solid #1a3040;
+    border-bottom: 3px solid #1a3040;
+    padding: 40px 36px;
+    position: relative;
+}
+
+.auth-panel::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-top: 2px solid #3a6080;
+    border-left: 2px solid #3a6080;
+    border-right: 2px solid #0a1820;
+    border-bottom: 2px solid #0a1820;
+    pointer-events: none;
+}
+
+.auth-panel > * { position: relative; z-index: 1; }
+
+.auth-brand {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.auth-brand-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 1rem;
+    color: #e8d87a;
+    text-shadow: 2px 2px 0 #5a4400;
+    margin-bottom: 6px;
+}
+
+.auth-brand-sub {
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #4a7a9a;
+}
+
+.auth-heading {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.85rem;
+    color: #c8dde8;
+    margin: 0 0 6px;
+    line-height: 1.6;
+}
+
+.auth-sub {
+    color: #5a8aa0;
+    font-size: 0.9rem;
+    margin: 0 0 22px;
+}
+
+.auth-error {
+    background: #3a0a0a;
+    border-top: 2px solid #7a1a1a;
+    border-left: 2px solid #7a1a1a;
+    border-right: 2px solid #100000;
+    border-bottom: 2px solid #100000;
+    color: #e87a7a;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 700;
+    font-size: 0.88rem;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.auth-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.auth-field label {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #8ab4cc;
+}
+
+.auth-field input {
+    padding: 12px 14px;
+    border-top: 2px solid #0a1820;
+    border-left: 2px solid #0a1820;
+    border-right: 2px solid #3a6080;
+    border-bottom: 2px solid #3a6080;
+    font-size: 0.95rem;
+    font-family: "Montserrat", sans-serif;
+    background: #0a1820;
+    color: #c8dde8;
+    width: 100%;
+    transition: border-color 0.15s;
+}
+
+.auth-field input:focus {
+    outline: none;
+    border-top-color: #5a8ab0;
+    border-left-color: #5a8ab0;
+}
+
+.auth-field input::placeholder { color: #4a7a9a; }
+
+.auth-form button {
+    margin-top: 12px;
+    width: 100%;
+    min-height: 46px;
+    background: #2a6496;
+    color: #d4eeff;
+    border-top: 3px solid #5a9fd4;
+    border-left: 3px solid #5a9fd4;
+    border-right: 3px solid #0a2a40;
+    border-bottom: 3px solid #0a2a40;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.62rem;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: filter 0.1s, transform 0.1s;
+}
+
+.auth-form button:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.auth-form button:active {
+    border-top-color: #0a2a40;
+    border-left-color: #0a2a40;
+    border-right-color: #5a9fd4;
+    border-bottom-color: #5a9fd4;
+    transform: translateY(1px);
+}
+
+.auth-switch {
+    text-align: center;
+    margin: 20px 0 0;
+    color: #4a7a9a;
+    font-size: 0.88rem;
+}
+
+.auth-switch a {
+    color: #7ab8e8;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.auth-switch a:hover { text-decoration: underline; }
+</style>
 {% endblock %}

@@ -1,8 +1,326 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1>AI IT Helpdesk Automation Assistant</h1>
-<p>This project simulates an AI-powered IT support system that classifies tickets and runs safe diagnostics.</p>
+<div class="landing">
 
-<a class="button" href="/submit">Create a Ticket</a>
+    <!-- Hero -->
+    <div class="hero-panel">
+        <div class="hero-inner">
+            <p class="hero-eyebrow">AI-Powered IT Support Platform</p>
+            <h1 class="hero-title">ChuggGPT<br>AI Helpdesk</h1>
+            <p class="hero-sub">Intelligent ticket triage, automated diagnostics, and a real-time AI chat agent — built for IT teams that want issues resolved, not just logged.</p>
+            <div class="hero-cta">
+                <a href="/login" class="btn-primary">Log In</a>
+                <a href="/signup" class="btn-ghost">Create Account</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- About / NPC Dialog -->
+    <div class="section-label">About</div>
+
+    <div class="npc-dialog-wrap">
+        <div class="npc-name-tag">Charlie Bailey</div>
+        <div class="npc-dialog">
+
+            <p class="dialog-text">
+                Greetings. I'm <strong>Charlie Bailey</strong>, an incoming <strong>Cybersecurity</strong> student at <strong>Kennesaw State University</strong>. I built ChuggGPT as a self-directed side project — not for a class, not for a grade, but because application development and AI integration is the kind of thing I do for fun.
+            </p>
+            <p class="dialog-text">
+                The goal was to go beyond tutorials and build something real with genuine moving parts, all wired together from scratch.
+            </p>
+
+            <div class="dialog-divider"></div>
+
+            <ul class="feature-list">
+                <li>
+                    <img src="/static/bullet_bill.png" class="bb-icon" alt="">
+                    <div class="fl-content">
+                        <span class="fl-title">AI Triage</span>
+                        <span class="fl-desc">Every ticket is instantly classified — severity, category, business impact, and escalation flags assigned before a human ever sees it.</span>
+                    </div>
+                </li>
+                <li>
+                    <img src="/static/bullet_bill.png" class="bb-icon" alt="">
+                    <div class="fl-content">
+                        <span class="fl-title">Streaming Chat Agent</span>
+                        <span class="fl-desc">An AI agent opens a live conversation on every ticket, streaming responses in real time over WebSocket and resolving common issues without human intervention.</span>
+                    </div>
+                </li>
+                <li>
+                    <img src="/static/bullet_bill.png" class="bb-icon" alt="">
+                    <div class="fl-content">
+                        <span class="fl-title">Automation</span>
+                        <span class="fl-desc">Suggested runbooks and scripts surface automatically. Admins can trigger safe diagnostics in one click directly from the dashboard.</span>
+                    </div>
+                </li>
+                <li>
+                    <img src="/static/bullet_bill.png" class="bb-icon" alt="">
+                    <div class="fl-content">
+                        <span class="fl-title">Admin Dashboard</span>
+                        <span class="fl-desc">Full ticket queue with filters, status controls, audit logs, and agent assignment. Everything in one place, no tab-switching required.</span>
+                    </div>
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+body { background: #0c1a27; }
+
+.landing {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+/* ── Hero ── */
+.hero-panel {
+    background: #132030;
+    border-top: 3px solid #5a8ab0;
+    border-left: 3px solid #5a8ab0;
+    border-right: 3px solid #1a3040;
+    border-bottom: 3px solid #1a3040;
+    padding: 52px 48px;
+    position: relative;
+}
+
+.hero-panel::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-top: 2px solid #3a6080;
+    border-left: 2px solid #3a6080;
+    border-right: 2px solid #0a1820;
+    border-bottom: 2px solid #0a1820;
+    pointer-events: none;
+}
+
+.hero-inner { position: relative; z-index: 1; max-width: 640px; }
+
+.hero-eyebrow {
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #5a9abf;
+    margin: 0 0 20px;
+}
+
+.hero-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 2.2rem;
+    line-height: 1.4;
+    color: #e8d87a;
+    text-shadow: 3px 3px 0 #5a4400, 2px 2px 0 #7a5c00;
+    margin: 0 0 24px;
+    letter-spacing: 0;
+}
+
+.hero-sub {
+    font-family: "Montserrat", sans-serif;
+    color: #8ab4cc;
+    font-size: 1rem;
+    line-height: 1.7;
+    margin: 0 0 36px;
+    max-width: 540px;
+}
+
+.hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
+
+.btn-primary, .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.72rem;
+    text-decoration: none;
+    padding: 14px 28px;
+    cursor: pointer;
+    transition: filter 0.1s, transform 0.1s;
+    letter-spacing: 0.02em;
+}
+
+.btn-primary {
+    background: #2a6496;
+    color: #d4eeff;
+    border-top: 3px solid #5a9fd4;
+    border-left: 3px solid #5a9fd4;
+    border-right: 3px solid #0a2a40;
+    border-bottom: 3px solid #0a2a40;
+}
+
+.btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-primary:active {
+    border-top-color: #0a2a40; border-left-color: #0a2a40;
+    border-right-color: #5a9fd4; border-bottom-color: #5a9fd4;
+    transform: translateY(1px);
+}
+
+.btn-ghost {
+    background: #1a2e3e;
+    color: #8ab4cc;
+    border-top: 3px solid #3a5a70;
+    border-left: 3px solid #3a5a70;
+    border-right: 3px solid #0a1820;
+    border-bottom: 3px solid #0a1820;
+}
+
+.btn-ghost:hover { color: #d4eeff; filter: brightness(1.15); transform: translateY(-1px); }
+
+/* ── Section label ── */
+.section-label {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.16em;
+    color: #4a7a9a;
+    text-transform: uppercase;
+    padding-left: 4px;
+}
+
+/* ── NPC Dialog ── */
+.npc-dialog-wrap { display: flex; flex-direction: column; }
+
+.npc-name-tag {
+    display: inline-block;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.6rem;
+    color: #e8d87a;
+    background: #0a1820;
+    border-top: 3px solid #5a8ab0;
+    border-left: 3px solid #5a8ab0;
+    border-right: 3px solid #1a3040;
+    border-bottom: 0;
+    padding: 8px 16px;
+    letter-spacing: 0.06em;
+    align-self: flex-start;
+}
+
+.npc-dialog {
+    background: #1e3a56;
+    border-top: 3px solid #5a8ab0;
+    border-left: 3px solid #5a8ab0;
+    border-right: 3px solid #0a1820;
+    border-bottom: 3px solid #0a1820;
+    padding: 28px 32px;
+    position: relative;
+}
+
+.npc-dialog::before {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-top: 2px solid #4a7aa0;
+    border-left: 2px solid #4a7aa0;
+    border-right: 2px solid #0a1830;
+    border-bottom: 2px solid #0a1830;
+    pointer-events: none;
+}
+
+.npc-dialog > * { position: relative; z-index: 1; }
+
+.dialog-text {
+    color: #e8f0f8;
+    font-family: "Montserrat", sans-serif;
+    font-size: 0.96rem;
+    line-height: 1.75;
+    margin: 0 0 14px;
+}
+
+.dialog-text strong { color: #e8d87a; }
+
+.dialog-divider {
+    border: none;
+    border-top: 2px solid #0a1820;
+    margin: 20px 0;
+}
+
+/* ── Feature list (inside dialog) ── */
+.feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.feature-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.bb-icon {
+    width: 32px;
+    height: auto;
+    image-rendering: pixelated;
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.fl-content { display: flex; flex-direction: column; gap: 5px; }
+
+.fl-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.58rem;
+    color: #e8d87a;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+}
+
+.fl-desc {
+    font-family: "Montserrat", sans-serif;
+    color: #8ab4cc;
+    font-size: 0.9rem;
+    line-height: 1.65;
+}
+
+/* ── Dialog option chips ── */
+.dialog-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 2px solid #0a1820;
+}
+
+.dialog-opt {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.5rem;
+    color: #7ab8e8;
+    padding: 7px 12px;
+    background: rgba(0, 0, 0, 0.25);
+    border-top: 2px solid #2a5a8a;
+    border-left: 2px solid #2a5a8a;
+    border-right: 2px solid #050d14;
+    border-bottom: 2px solid #050d14;
+    letter-spacing: 0.04em;
+    line-height: 1.6;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+    .hero-panel { padding: 32px 24px; }
+    .hero-title { font-size: 1.5rem; }
+    .npc-dialog { padding: 20px 18px; }
+}
+
+@media (max-width: 480px) {
+    .hero-title { font-size: 1.2rem; }
+    .hero-cta { flex-direction: column; }
+    .btn-primary, .btn-ghost { justify-content: center; }
+    .bb-icon { width: 26px; }
+}
+</style>
 {% endblock %}

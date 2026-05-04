@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+
+    <div class="td-header">
+        <div>
+            <div class="td-breadcrumb">
+                {% if current_user.role == "admin" %}
+                    <a href="/dashboard">Dashboard</a>
+                {% else %}
+                    <a href="/my-tickets">My Tickets</a>
+                {% endif %}
+                <span>›</span>
+                <span>Ticket #{{ ticket.id }}</span>
+            </div>
+            <h1>Ticket #{{ ticket.id }}</h1>
+        </div>
+        <div class="td-header-actions">
+            <a href="/chat/{{ ticket.id }}" class="cta-primary">Open Chat</a>
+        </div>
+    </div>
+
+    <div class="td-statusbar">
+        {% if ticket.status == "Open" %}
+            <span class="status-badge status-open">{{ ticket.status }}</span>
+        {% elif ticket.status == "In Progress" %}
+            <span class="status-badge status-progress">{{ ticket.status }}</span>
+        {% elif ticket.status == "Resolved" %}
+            <span class="status-badge status-resolved">{{ ticket.status }}</span>
+        {% elif ticket.status == "Escalated" %}
+            <span class="status-badge status-escalated">{{ ticket.status }}</span>
+        {% else %}
+            <span class="status-badge">{{ ticket.status }}</span>
+        {% endif %}
+        <span class="pill pill-purple">{{ ticket.category.replace('_',' ').title() }}</span>
+        <span class="pill pill-gold">{{ ticket.urgency }}</span>
+        <span class="pill pill-soft">{{ ticket.device_type }}</span>
+        <span class="td-date">Submitted {{ ticket.created_at.strftime('%d %b %Y at %H:%M') if ticket.created_at and ticket.created_at.strftime is defined else ticket.created_at }}</span>
+    </div>
+
+    <div class="td-grid">
+
+        <!-- Left column -->
+        <div class="td-main">
+
+            <div class="td-section">
+                <div class="td-section-title">Requester</div>
+                <div class="td-info-row">
+                    <div class="td-info-item">
+                        <span class="td-label">Name</span>
+                        <span class="td-value">{{ ticket.name }}</span>
+                    </div>
+                    <div class="td-info-item">
+                        <span class="td-label">Device</span>
+                        <span class="td-value">{{ ticket.device_type }}</span>
+                    </div>
+                    <div class="td-info-item">
+                        <span class="td-label">Assignee</span>
+                        <span class="td-value">
+                            {% if assignee %}{{ assignee.name }}{% else %}<span style="color:var(--muted-dark);">Unassigned</span>{% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="td-section">
+                <div class="td-section-title">Issue Description</div>
+                <div class="td-prose">{{ ticket.issue_description }}</div>
+            </div>
+
+            <div class="td-section">
+                <div class="td-section-title">AI Summary</div>
+                <div class="td-prose td-highlight">{{ ticket.summary or "No summary available." }}</div>
+            </div>
+
+            {% if ticket.suggested_steps %}
+            <div class="td-section">
+                <div class="td-section-title">Suggested Troubleshooting Steps</div>
+                <ol class="td-steps">
+                    {% for step in ticket.suggested_steps.split('\n') %}
+                        {% if step.strip() %}
+                        <li>{{ step.strip().lstrip('0123456789.-) ') }}</li>
+                        {% endif %}
+                    {% endfor %}
+                </ol>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Right column -->
+        <div class="td-side">
+
+            <div class="td-card">
+                <div class="td-card-title">AI Triage</div>
+
+                <div class="td-metric">
+                    <span class="td-metric-label">Confidence</span>
+                    <div class="td-confidence-bar">
+                        <div class="td-confidence-fill" style="width: {{ '%.0f'|format((ticket.ai_confidence or 0) * 100) }}%"></div>
+                    </div>
+                    <span class="td-metric-val">{{ '%.0f'|format((ticket.ai_confidence or 0) * 100) }}%</span>
+                </div>
+
+                <div class="td-metric">
+                    <span class="td-metric-label">Severity</span>
+                    <span class="td-metric-val">{{ ticket.severity or "—" }}</span>
+                </div>
+
+                <div class="td-metric">
+                    <span class="td-metric-label">Business Impact</span>
+                    <span class="td-metric-val">{{ (ticket.ai_business_impact or "—").replace('_', ' ').title() }}</span>
+                </div>
+
+                <div class="td-metric">
+                    <span class="td-metric-label">Escalation Needed</span>
+                    {% if ticket.ai_escalation_needed %}
+                        <span class="flag-chip flag-escalate">Yes</span>
+                    {% else %}
+                        <span class="flag-chip flag-ok">No</span>
+                    {% endif %}
+                </div>
+
+                {% if ticket.ai_escalation_needed and ticket.ai_escalation_reason %}
+                <div class="td-reason">
+                    <span class="td-label">Escalation Reason</span>
+                    <p>{{ ticket.ai_escalation_reason }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="td-card">
+                <div class="td-card-title">Automation</div>
+                <div class="td-metric">
+                    <span class="td-metric-label">Eligible</span>
+                    {% if ticket.automation_possible %}
+                        <span class="flag-chip flag-auto">Yes</span>
+                    {% else %}
+                        <span class="flag-chip flag-none">No</span>
+                    {% endif %}
+                </div>
+                {% if ticket.ai_suggested_automation or ticket.recommended_script %}
+                <div class="td-metric">
+                    <span class="td-metric-label">Script</span>
+                    <code class="td-code">{{ ticket.ai_suggested_automation or ticket.recommended_script }}</code>
+                </div>
+                {% endif %}
+                {% if ticket.automation_output and ticket.automation_output != "No automation output." %}
+                <div class="td-reason">
+                    <span class="td-label">Output</span>
+                    <p>{{ ticket.automation_output }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if current_user.role == "admin" %}
+            <div class="td-card">
+                <div class="td-card-title">Actions</div>
+                <div class="td-action-list">
+                    <form method="post" action="/claim-ticket">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                        <button class="ta-btn ta-blue td-full-btn">Claim Ticket</button>
+                    </form>
+                    <form method="post" action="/update-ticket-status">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                        <button class="ta-btn ta-yellow td-full-btn" name="status" value="In Progress">Mark In Progress</button>
+                    </form>
+                    <form method="post" action="/update-ticket-status">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                        <button class="ta-btn ta-green td-full-btn" name="status" value="Resolved">Mark Resolved</button>
+                    </form>
+                    <form method="post" action="/update-ticket-status">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                        <button class="ta-btn ta-red td-full-btn" name="status" value="Escalated"
+                            data-confirm="This will escalate the ticket and notify the team. Continue?"
+                            data-confirm-title="Escalate Ticket"
+                            data-confirm-ok="Escalate">Escalate</button>
+                    </form>
+                    {% if ticket.automation_possible %}
+                    <form method="post" action="/execute-automation">
+                        <input type="hidden" name="ticket_id" value="{{ ticket.id }}">
+                        <button class="ta-btn ta-teal td-full-btn">Run Automation</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+    {% if audit_logs %}
+    <h2>Audit Log</h2>
+    <div class="audit-list">
+        {% for log in audit_logs %}
+        <div class="audit-row">
+            <div class="audit-main">
+                <span class="audit-action">{{ log.action }}</span>
+                <span class="audit-detail">{{ log.details }}</span>
+            </div>
+            <span class="audit-time">{{ log.created_at }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.td-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.td-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.86rem;
+    color: var(--muted-dim);
+    margin-bottom: 6px;
+}
+
+.td-breadcrumb a { color: var(--teal); text-decoration: none; font-weight: 700; }
+.td-breadcrumb a:hover { text-decoration: underline; }
+
+.td-statusbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.td-date { font-size: 0.8rem; color: var(--muted-dark); margin-left: auto; }
+
+.td-grid {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 18px;
+    align-items: start;
+}
+
+.td-main { display: flex; flex-direction: column; gap: 14px; }
+.td-side { display: flex; flex-direction: column; gap: 12px; }
+
+.td-section {
+    background: var(--surface-deep);
+    border-top: 2px solid var(--border-mid);
+    border-left: 2px solid var(--border-mid);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+    padding: 16px 18px;
+}
+
+.td-section-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.52rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted-dark);
+    margin-bottom: 12px;
+}
+
+.td-prose {
+    color: var(--muted);
+    font-size: 0.95rem;
+    line-height: 1.65;
+    white-space: pre-line;
+}
+
+.td-highlight {
+    background: #0a1a2a;
+    border-top: 2px solid var(--border-mid);
+    border-left: 4px solid var(--border-light);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+    padding: 12px 14px;
+    color: var(--text);
+}
+
+.td-info-row { display: flex; flex-wrap: wrap; gap: 20px; }
+
+.td-info-item { display: flex; flex-direction: column; gap: 4px; }
+
+.td-label {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.46rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-dark);
+}
+
+.td-value { font-weight: 700; color: var(--text); font-size: 0.95rem; }
+
+.td-steps {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.td-steps li { color: var(--muted); font-size: 0.93rem; line-height: 1.55; }
+
+.td-card {
+    background: var(--surface-deep);
+    border-top: 2px solid var(--border-mid);
+    border-left: 2px solid var(--border-mid);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.td-card-title {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gold);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-mid);
+}
+
+.td-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.td-metric-label { font-size: 0.84rem; color: var(--muted-dim); font-weight: 600; }
+.td-metric-val { font-weight: 700; color: var(--text); font-size: 0.88rem; }
+
+.td-confidence-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border-mid);
+}
+
+.td-confidence-fill {
+    height: 100%;
+    background: #2a6496;
+    transition: width 0.6s ease;
+}
+
+.td-reason {
+    background: var(--surface);
+    padding: 10px 12px;
+    border-top: 1px solid var(--border-mid);
+    border-left: 3px solid var(--border-light);
+}
+
+.td-reason p { margin: 4px 0 0; font-size: 0.86rem; color: var(--muted); line-height: 1.5; }
+
+.td-code {
+    background: rgba(0,0,0,0.3);
+    padding: 3px 8px;
+    font-size: 0.82rem;
+    color: var(--teal);
+    font-family: monospace;
+}
+
+/* Flag chips */
+.flag-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.42rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid;
+}
+
+.flag-escalate { background: #3a1a1a; color: #e87a7a; border-color: #6a2a2a; }
+.flag-auto     { background: #1a3a6a; color: #7ab8e8; border-color: #2a5a9a; }
+.flag-ok       { background: #1a3a1a; color: #7ac87a; border-color: #2a6a2a; }
+.flag-none     { background: var(--surface-deep); color: var(--muted); border-color: var(--border-mid); }
+
+/* Ticket detail action buttons */
+.ta-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 12px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.48rem;
+    cursor: pointer;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: filter 0.1s;
+    letter-spacing: 0.02em;
+}
+
+.ta-btn:hover { filter: brightness(1.2); }
+
+.ta-blue   { background: #0a1a3a; color: #7ab8e8; border-top: 2px solid #1a4a7a; border-left: 2px solid #1a4a7a; border-right: 2px solid #00081a; border-bottom: 2px solid #00081a; }
+.ta-yellow { background: #3a2a00; color: #e8c84a; border-top: 2px solid #7a5a00; border-left: 2px solid #7a5a00; border-right: 2px solid #1a1000; border-bottom: 2px solid #1a1000; }
+.ta-green  { background: #0a2a10; color: #7ac87a; border-top: 2px solid #1a6a30; border-left: 2px solid #1a6a30; border-right: 2px solid #001008; border-bottom: 2px solid #001008; }
+.ta-red    { background: #2a0a0a; color: #e87a7a; border-top: 2px solid #6a1a1a; border-left: 2px solid #6a1a1a; border-right: 2px solid #100000; border-bottom: 2px solid #100000; }
+.ta-teal   { background: #0a1a3a; color: #7ab8e8; border-top: 2px solid #2a5a9a; border-left: 2px solid #2a5a9a; border-right: 2px solid #050d1a; border-bottom: 2px solid #050d1a; }
+
+.td-action-list { display: flex; flex-direction: column; gap: 6px; }
+.td-full-btn { width: 100%; justify-content: center; min-height: 38px; }
+.td-action-list form { margin: 0; }
+
+/* cta-primary inherits from style.css */
+.cta-primary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; }
+
+/* Audit log */
+.audit-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: 14px;
+    background: var(--surface-deep);
+    border-top: 2px solid var(--border-mid);
+    border-left: 2px solid var(--border-mid);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+}
+
+.audit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border-mid);
+    flex-wrap: wrap;
+}
+
+.audit-row:last-child { border-bottom: none; }
+.audit-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1; }
+.audit-action { font-weight: 700; font-size: 0.86rem; color: var(--gold); white-space: nowrap; }
+.audit-detail { font-size: 0.84rem; color: var(--muted-dim); }
+.audit-time { font-size: 0.76rem; color: var(--muted-dark); white-space: nowrap; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+    .td-grid { grid-template-columns: 1fr; }
+    .td-side { order: -1; }
+    .td-date { margin-left: 0; }
+}
+</style>
+{% endblock %}

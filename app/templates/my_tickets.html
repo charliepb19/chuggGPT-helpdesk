@@ -1,54 +1,221 @@
 {% extends "base.html" %}
 
 {% block content %}
-
 <div class="container">
     <h1>My Tickets</h1>
     <p class="kicker">Track your submitted tickets and continue troubleshooting in chat.</p>
 
-    <div class="table-wrapper">
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Device</th>
-                <th>Urgency</th>
-                <th>Category</th>
-                <th>Severity</th>
-                <th>Status</th>
-                <th>Summary</th>
-                <th>Automation Output</th>
-                <th>Created At</th>
-                <th>Chat</th>
-            </tr>
-
-            {% for ticket in tickets %}
-            <tr>
-                <td>{{ ticket.id }}</td>
-                <td>{{ ticket.device_type }}</td>
-                <td>{{ ticket.urgency }}</td>
-                <td>{{ ticket.category }}</td>
-                <td>{{ ticket.severity }}</td>
-                <td>
-                    {% if ticket.status == "Open" %}
-                        <span class="status-badge status-open">{{ ticket.status }}</span>
-                    {% elif ticket.status == "In Progress" %}
-                        <span class="status-badge status-progress">{{ ticket.status }}</span>
-                    {% elif ticket.status == "Resolved" %}
-                        <span class="status-badge status-resolved">{{ ticket.status }}</span>
-                    {% elif ticket.status == "Escalated" %}
-                        <span class="status-badge status-escalated">{{ ticket.status }}</span>
-                    {% else %}
-                        <span class="status-badge">{{ ticket.status }}</span>
-                    {% endif %}
-                </td>
-                <td>{{ ticket.summary }}</td>
-                <td>{{ ticket.automation_output }}</td>
-                <td>{{ ticket.created_at }}</td>
-                <td><a href="/chat/{{ ticket.id }}">Open Chat</a></td>
-            </tr>
+    <form method="get" action="/my-tickets" class="mt-filter-bar">
+        <select name="status_filter" onchange="this.form.submit()">
+            <option value="">All Statuses</option>
+            {% for status in all_statuses %}
+            <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>{{ status }}</option>
             {% endfor %}
-        </table>
-    </div>
-</div>
+        </select>
+        <select name="category_filter" onchange="this.form.submit()">
+            <option value="">All Categories</option>
+            {% for category in all_categories %}
+            <option value="{{ category }}" {% if category_filter == category %}selected{% endif %}>{{ category.replace('_',' ').title() }}</option>
+            {% endfor %}
+        </select>
+        {% if status_filter or category_filter %}
+        <a href="/my-tickets" class="mt-clear">Clear</a>
+        {% endif %}
+    </form>
 
+    {% if tickets %}
+    <div class="tickets-card-grid">
+        {% for ticket in tickets %}
+        <div class="ticket-card">
+            <div class="ticket-card-header">
+                <span class="pill pill-soft">#{{ ticket.id }}</span>
+                {% if ticket.status == "Open" %}
+                    <span class="status-badge status-open">{{ ticket.status }}</span>
+                {% elif ticket.status == "In Progress" %}
+                    <span class="status-badge status-progress">{{ ticket.status }}</span>
+                {% elif ticket.status == "Resolved" %}
+                    <span class="status-badge status-resolved">{{ ticket.status }}</span>
+                {% elif ticket.status == "Escalated" %}
+                    <span class="status-badge status-escalated">{{ ticket.status }}</span>
+                {% else %}
+                    <span class="status-badge">{{ ticket.status }}</span>
+                {% endif %}
+            </div>
+
+            <p class="ticket-card-summary">{{ ticket.summary }}</p>
+
+            <div class="ticket-card-pills">
+                <span class="pill pill-purple">{{ ticket.category.replace('_',' ').title() }}</span>
+                <span class="pill pill-gold">{{ ticket.urgency }}</span>
+                <span class="pill pill-soft">{{ ticket.device_type }}</span>
+                <span class="pill pill-soft">{{ ticket.severity }}</span>
+            </div>
+
+            <div class="ticket-card-footer">
+                <span class="ticket-card-date">{{ ticket.created_at.strftime('%d %b %Y, %H:%M') if ticket.created_at and ticket.created_at.strftime is defined else ticket.created_at }}</span>
+                <div class="ticket-card-btns">
+                    <a href="/ticket/{{ ticket.id }}" class="tc-btn tc-ghost">Details</a>
+                    <a href="/chat/{{ ticket.id }}" class="tc-btn tc-blue">Open Chat</a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-label">
+            {% if status_filter or category_filter %}— No Results —{% else %}— No Tickets Yet —{% endif %}
+        </div>
+        {% if status_filter or category_filter %}
+        <p>Try clearing the filters to see all your tickets.</p>
+        <a href="/my-tickets" class="cta-primary">Clear Filters</a>
+        {% else %}
+        <p>Submit your first support request and the AI will get to work.</p>
+        <a href="/submit-ticket" class="cta-primary">Submit a Ticket</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.mt-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 20px;
+    margin-bottom: 22px;
+}
+
+.mt-filter-bar select {
+    padding: 10px 14px;
+    border-top: 2px solid #0a1820;
+    border-left: 2px solid #0a1820;
+    border-right: 2px solid #3a6080;
+    border-bottom: 2px solid #3a6080;
+    font-size: 0.9rem;
+    font-family: "Montserrat", sans-serif;
+    background: var(--surface-deep);
+    color: var(--text);
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.mt-filter-bar select option { background: var(--surface-deep); color: var(--text); }
+
+.mt-clear {
+    color: var(--muted-dim);
+    font-weight: 700;
+    font-size: 0.88rem;
+    text-decoration: none;
+    padding: 10px 12px;
+}
+
+.mt-clear:hover { color: var(--text); }
+
+.tickets-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.ticket-card {
+    background: var(--surface-deep);
+    border-top: 2px solid var(--border-mid);
+    border-left: 2px solid var(--border-mid);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    transition: border-color 0.15s;
+}
+
+.ticket-card:hover {
+    border-top-color: var(--border-light);
+    border-left-color: var(--border-light);
+}
+
+.ticket-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ticket-card-summary {
+    color: var(--muted);
+    font-size: 0.92rem;
+    line-height: 1.55;
+    margin: 0;
+    flex: 1;
+}
+
+.ticket-card-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.ticket-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid var(--border-mid);
+    padding-top: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.ticket-card-date { font-size: 0.78rem; color: var(--muted-dark); }
+
+.ticket-card-btns { display: flex; gap: 6px; }
+
+.tc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 12px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.48rem;
+    letter-spacing: 0.02em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: filter 0.1s;
+    white-space: nowrap;
+}
+
+.tc-blue {
+    background: #0a1a3a;
+    color: #7ab8e8;
+    border-top: 2px solid #1a4a7a;
+    border-left: 2px solid #1a4a7a;
+    border-right: 2px solid #00081a;
+    border-bottom: 2px solid #00081a;
+}
+
+.tc-ghost {
+    background: var(--surface);
+    color: var(--muted);
+    border-top: 2px solid var(--border-mid);
+    border-left: 2px solid var(--border-mid);
+    border-right: 2px solid var(--border-darkest);
+    border-bottom: 2px solid var(--border-darkest);
+}
+
+.tc-btn:hover { filter: brightness(1.2); }
+
+.empty-state { text-align: center; padding: 56px 24px; }
+
+.empty-label {
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.65rem;
+    color: var(--muted-dark);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+}
+
+.empty-state p { color: var(--muted-dim); margin-bottom: 20px; }
+
+.cta-primary { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; }
+</style>
 {% endblock %}

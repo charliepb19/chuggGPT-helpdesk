@@ -5,30 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChuggGPT AI Helpdesk</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    {% block extra_styles %}{% endblock %}
 </head>
 <body>
     <header class="topbar">
         <div class="topbar-inner">
             <a href="/" class="brand-wrap">
-                <div class="brand">ChuggGPT AI Helpdesk</div>
-                <div class="brand-subtitle">AI-Native IT Support Intelligence</div>
+                <div class="brand">ChuggGPT</div>
+                <div class="brand-subtitle">AI Helpdesk</div>
             </a>
 
+            {% set path = request.url.path %}
             <nav class="nav-links">
                 {% if request.session.get("user_id") %}
-                    <a href="/submit-ticket">Submit Ticket</a>
-                    <a href="/my-tickets">My Tickets</a>
+                    <a href="/submit-ticket" class="{{ 'nav-active' if path == '/submit-ticket' else '' }}">Submit Ticket</a>
+                    <a href="/my-tickets" class="{{ 'nav-active' if path.startswith('/my-tickets') or path.startswith('/ticket/') else '' }}">My Tickets</a>
 
                     {% if request.session.get("user_role") == "admin" %}
-                        <a href="/dashboard">Dashboard</a>
+                        <a href="/dashboard" class="{{ 'nav-active' if path == '/dashboard' else '' }}">Dashboard</a>
                     {% endif %}
 
+                    <a href="/profile" class="{{ 'nav-active' if path == '/profile' else '' }}">Profile</a>
                     <a href="/logout">Logout</a>
                 {% else %}
-                    <a href="/login">Login</a>
-                    <a href="/signup">Sign Up</a>
+                    <a href="/login" class="{{ 'nav-active' if path == '/login' else '' }}">Login</a>
+                    <a href="/signup" class="{{ 'nav-active' if path == '/signup' else '' }}">Sign Up</a>
                 {% endif %}
             </nav>
         </div>
@@ -37,5 +40,154 @@
     <main class="page-shell">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- Confirmation modal -->
+    <div id="confirm-overlay" style="display:none;">
+        <div id="confirm-modal">
+            <div id="confirm-title-text"></div>
+            <p id="confirm-message"></p>
+            <div class="confirm-actions">
+                <button id="confirm-cancel" class="confirm-btn confirm-btn--cancel">Cancel</button>
+                <button id="confirm-ok" class="confirm-btn confirm-btn--ok">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    #confirm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 10, 20, 0.82);
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    #confirm-modal {
+        background: #132030;
+        border-top: 3px solid #5a8ab0;
+        border-left: 3px solid #5a8ab0;
+        border-right: 3px solid #1a3040;
+        border-bottom: 3px solid #1a3040;
+        padding: 32px 28px;
+        max-width: 400px;
+        width: 100%;
+        position: relative;
+    }
+
+    #confirm-modal::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-top: 2px solid #3a6080;
+        border-left: 2px solid #3a6080;
+        border-right: 2px solid #0a1820;
+        border-bottom: 2px solid #0a1820;
+        pointer-events: none;
+    }
+
+    #confirm-modal > * { position: relative; z-index: 1; }
+
+    #confirm-title-text {
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.75rem;
+        color: #e8d87a;
+        text-shadow: 1px 1px 0 #5a4400;
+        margin-bottom: 14px;
+        line-height: 1.6;
+    }
+
+    #confirm-message {
+        color: #8ab4cc;
+        font-family: "Montserrat", sans-serif;
+        font-size: 0.9rem;
+        line-height: 1.55;
+        margin: 0 0 24px;
+    }
+
+    .confirm-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .confirm-btn {
+        flex: 1;
+        min-height: 40px;
+        padding: 0 16px;
+        font-family: "Press Start 2P", monospace;
+        font-size: 0.55rem;
+        letter-spacing: 0.04em;
+        cursor: pointer;
+        transition: filter 0.1s;
+    }
+
+    .confirm-btn--cancel {
+        background: #0a1820;
+        color: #8ab4cc;
+        border-top: 2px solid #3a6080;
+        border-left: 2px solid #3a6080;
+        border-right: 2px solid #0a1420;
+        border-bottom: 2px solid #0a1420;
+    }
+
+    .confirm-btn--ok {
+        background: #3a0a0a;
+        color: #e87a7a;
+        border-top: 2px solid #7a1a1a;
+        border-left: 2px solid #7a1a1a;
+        border-right: 2px solid #100000;
+        border-bottom: 2px solid #100000;
+    }
+
+    .confirm-btn:hover { filter: brightness(1.2); }
+    </style>
+
+    <script>
+    (function () {
+        const overlay  = document.getElementById("confirm-overlay");
+        const titleEl  = document.getElementById("confirm-title-text");
+        const msgEl    = document.getElementById("confirm-message");
+        const okBtn    = document.getElementById("confirm-ok");
+        const cancelBtn = document.getElementById("confirm-cancel");
+
+        let pendingForm = null;
+
+        function showConfirm(title, message, okLabel) {
+            titleEl.textContent = title;
+            msgEl.textContent   = message;
+            okBtn.textContent   = okLabel || "Confirm";
+            overlay.style.display = "flex";
+        }
+
+        function hide() { overlay.style.display = "none"; pendingForm = null; }
+
+        cancelBtn.addEventListener("click", hide);
+        overlay.addEventListener("click", function (e) { if (e.target === overlay) hide(); });
+
+        okBtn.addEventListener("click", function () {
+            if (pendingForm) {
+                overlay.style.display = "none";
+                pendingForm.submit();
+                pendingForm = null;
+            }
+        });
+
+        document.addEventListener("click", function (e) {
+            const btn = e.target.closest("[data-confirm]");
+            if (!btn) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const title   = btn.dataset.confirmTitle || "Are you sure?";
+            const message = btn.dataset.confirm;
+            const okLabel = btn.dataset.confirmOk    || "Confirm";
+
+            pendingForm = btn.closest("form");
+            showConfirm(title, message, okLabel);
+        });
+    })();
+    </script>
 </body>
 </html>

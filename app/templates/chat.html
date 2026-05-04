@@ -1,7 +1,21 @@
 {% extends "base.html" %}
 
-{% block content %}
+{% block extra_styles %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<style>
+.message-body p { margin: 0 0 8px; }
+.message-body p:last-child { margin-bottom: 0; }
+.message-body ul, .message-body ol { margin: 6px 0 8px 18px; padding: 0; }
+.message-body li { margin-bottom: 4px; }
+.message-body code { background: rgba(0,0,0,0.4); padding: 2px 6px; font-size: 0.9em; font-family: monospace; }
+.message-body pre { background: rgba(0,0,0,0.4); padding: 12px; overflow-x: auto; margin: 8px 0; }
+.message-body pre code { background: none; padding: 0; }
+.message-body strong { color: #d4eeff; }
+</style>
+{% endblock %}
 
+{% block content %}
 <div class="container">
     <h1>Support Chat</h1>
     <p class="kicker">Work through this issue with the AI support agent in real time.</p>
@@ -13,136 +27,344 @@
             <div class="meta-chip"><strong>Status</strong> <span id="ticket-status">{{ ticket.status }}</span></div>
             <div class="meta-chip"><strong>Urgency</strong> {{ ticket.urgency }}</div>
         </div>
-
         <div class="steps">
-            <strong>Ticket Summary:</strong><br>
-            {{ ticket.summary }}
+            <strong>Summary:</strong> {{ ticket.summary }}
         </div>
     </div>
 
     <h2>Conversation</h2>
 
-    <div class="table-wrapper chat-shell" style="padding:18px;">
-        <div id="chat-messages">
+    <div class="table-wrapper chat-shell" id="chat-shell">
+        <div id="chat-messages" style="padding:16px;">
             {% for msg in messages %}
-            <div class="{% if msg.sender_type == 'agent' %}agent-msg{% elif msg.sender_type == 'user' %}user-msg{% else %}system-msg{% endif %}">
-                <strong>{{ msg.sender_type|capitalize }}:</strong><br>
-                <div class="message-body">{{ msg.message }}</div>
+            <div class="chat-row chat-row--{{ msg.sender_type }}">
+                <div class="chat-bubble {{ 'agent-msg' if msg.sender_type == 'agent' else 'user-msg' if msg.sender_type == 'user' else 'admin-msg' if msg.sender_type == 'admin' else 'system-msg' }}">
+                    <div class="message-body markdown-body">{{ msg.message }}</div>
+                    <div class="msg-meta">{{ msg.sender_type|capitalize }}{% if msg.created_at %} · {{ msg.created_at.strftime('%H:%M') if msg.created_at.strftime is defined else msg.created_at }}{% endif %}</div>
+                </div>
             </div>
             {% endfor %}
+        </div>
+
+        <div id="typing-indicator" class="chat-row chat-row--agent" style="display:none;padding:0 16px 16px;">
+            <div class="chat-bubble agent-msg typing-bubble">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            </div>
         </div>
     </div>
 
     {% set closed = chat_session.status == "Resolved" or chat_session.status == "Escalated" %}
 
-    <form id="chat-form" class="ticket-form" {% if closed %}style="display:none;"{% endif %}>
-        <label>Reply to the AI Support Agent</label>
+    {% if current_user.role == "admin" %}
+    <div class="admin-compose-badge">Replying as Admin — your message goes directly to the user, no AI involved</div>
+    {% endif %}
+    <form id="chat-form" class="chat-compose" {% if closed %}style="display:none;"{% endif %}>
         <textarea
             id="chat-input"
-            placeholder="Tell the agent what happened after the last step, or type 'escalate' to request a human."
+            class="chat-textarea"
+            placeholder="Describe what happened… (Enter to send, Shift+Enter for new line)"
+            rows="3"
             required
         ></textarea>
-        <div class="form-note">Tip: keep each update short so the agent can guide you one step at a time.</div>
-        <button type="submit">Send Message</button>
+        <button type="submit" class="chat-send-btn">Send</button>
     </form>
 
     <div id="chat-closed-banner" class="steps" {% if not closed %}style="display:none;"{% endif %}>
-        This chat session is {{ chat_session.status }}.
+        This chat session is <strong>{{ chat_session.status }}</strong>.
     </div>
 </div>
 
+<style>
+.chat-shell { padding: 0; max-height: 540px; overflow-y: auto; }
+#chat-messages { display: flex; flex-direction: column; gap: 12px; }
+
+.chat-row { display: flex; }
+.chat-row--agent  { justify-content: flex-start; }
+.chat-row--user   { justify-content: flex-end; }
+.chat-row--system { justify-content: center; }
+.chat-row--admin  { justify-content: flex-end; }
+
+.chat-bubble { max-width: 78%; padding: 12px 16px; }
+
+.msg-meta {
+    font-size: 0.7rem;
+    color: rgba(138, 180, 204, 0.5);
+    margin-top: 6px;
+    text-align: right;
+    font-family: "Montserrat", sans-serif;
+}
+.chat-row--agent .msg-meta  { text-align: left; }
+.chat-row--system .msg-meta { text-align: center; }
+
+/* Typing dots */
+.typing-bubble { display: flex; align-items: center; gap: 5px; padding: 14px 18px; }
+.dot {
+    width: 7px; height: 7px;
+    background: #3a6080;
+    animation: bounce 1.2s infinite ease-in-out;
+}
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* Compose area */
+.chat-compose {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin-top: 14px;
+}
+
+.chat-textarea {
+    flex: 1;
+    padding: 12px 14px;
+    border-top: 2px solid #0a1820;
+    border-left: 2px solid #0a1820;
+    border-right: 2px solid #3a6080;
+    border-bottom: 2px solid #3a6080;
+    font-size: 0.95rem;
+    font-family: "Montserrat", sans-serif;
+    background: var(--surface-deep);
+    color: var(--text);
+    resize: none;
+    line-height: 1.5;
+    transition: border-color 0.15s;
+}
+
+.chat-textarea::placeholder { color: var(--muted-dark); }
+.chat-textarea:focus {
+    outline: none;
+    border-top-color: var(--border-light);
+    border-left-color: var(--border-light);
+}
+
+.chat-send-btn {
+    min-height: 48px;
+    padding: 0 20px;
+    background: #2a6496;
+    color: #d4eeff;
+    border-top: 3px solid #5a9fd4;
+    border-left: 3px solid #5a9fd4;
+    border-right: 3px solid #0a2a40;
+    border-bottom: 3px solid #0a2a40;
+    font-family: "Press Start 2P", monospace;
+    font-size: 0.58rem;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: filter 0.1s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.chat-send-btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.chat-send-btn:active {
+    border-top-color: #0a2a40;
+    border-left-color: #0a2a40;
+    border-right-color: #5a9fd4;
+    border-bottom-color: #5a9fd4;
+    transform: translateY(1px);
+}
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; filter: none; }
+
+.admin-compose-badge {
+    margin-top: 12px;
+    padding: 8px 14px;
+    background: #1a1400;
+    border-top: 2px solid #4a3800;
+    border-left: 2px solid #4a3800;
+    border-right: 2px solid #0a0800;
+    border-bottom: 2px solid #0a0800;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #e8c84a;
+    font-family: "Montserrat", sans-serif;
+}
+
+@media (max-width: 600px) {
+    .chat-bubble { max-width: 92%; }
+    .chat-shell { max-height: 420px; }
+    .chat-compose { flex-direction: column; }
+    .chat-send-btn { width: 100%; min-height: 44px; }
+}
+</style>
+
 <script>
 (function () {
-    const ticketId = "{{ ticket.id }}";
-    const userId = "{{ current_user.id }}";
+    const ticketId  = "{{ ticket.id }}";
+    const isAdmin   = "{{ current_user.role }}" === "admin";
+    const protocol  = window.location.protocol === "https:" ? "wss" : "ws";
+    const socket    = new WebSocket(`${protocol}://${window.location.host}/ws/chat/${ticketId}`);
 
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const socketUrl = `${protocol}://${window.location.host}/ws/chat/${ticketId}?user_id=${userId}`;
-    const socket = new WebSocket(socketUrl);
+    const shellEl      = document.getElementById("chat-shell");
+    const messagesEl   = document.getElementById("chat-messages");
+    const formEl       = document.getElementById("chat-form");
+    const inputEl      = document.getElementById("chat-input");
+    const statusEl     = document.getElementById("ticket-status");
+    const typingEl     = document.getElementById("typing-indicator");
+    const closedBanner = document.getElementById("chat-closed-banner");
+    const sendBtn      = formEl ? formEl.querySelector("button") : null;
 
-    const messagesEl = document.getElementById("chat-messages");
-    const formEl = document.getElementById("chat-form");
-    const inputEl = document.getElementById("chat-input");
-    const statusEl = document.getElementById("ticket-status");
-    const closedBannerEl = document.getElementById("chat-closed-banner");
+    const shownUserMsgs = new Set();
+    let streamingBody = null;
+    let streamingText = "";
 
-    function escapeHtml(value) {
-        return value
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+    function escapeHtml(v) {
+        return v.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+                .replace(/"/g,"&quot;").replace(/'/g,"&#039;");
     }
 
-    function appendMessage(senderType, message) {
-        const div = document.createElement("div");
-
-        if (senderType === "agent") {
-            div.className = "agent-msg";
-        } else if (senderType === "user") {
-            div.className = "user-msg";
-        } else {
-            div.className = "system-msg";
-        }
-
-        const label = senderType.charAt(0).toUpperCase() + senderType.slice(1);
-        div.innerHTML = `<strong>${label}:</strong><br><div class="message-body">${escapeHtml(message)}</div>`;
-
-        messagesEl.appendChild(div);
-        div.scrollIntoView({ behavior: "smooth", block: "end" });
+    function now() {
+        return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
+
+    function scrollBottom() { shellEl.scrollTop = shellEl.scrollHeight; }
+
+    function appendMessage(senderType, message, time) {
+        const row = document.createElement("div");
+        row.className = `chat-row chat-row--${senderType}`;
+
+        const bubble = document.createElement("div");
+        const bubbleClass = senderType === "agent" ? "agent-msg" : senderType === "user" ? "user-msg" : senderType === "admin" ? "admin-msg" : "system-msg";
+        bubble.className = `chat-bubble ${bubbleClass}`;
+
+        const body = document.createElement("div");
+        body.className = "message-body";
+        body.innerHTML = DOMPurify.sanitize(marked.parse(message));
+
+        const meta = document.createElement("div");
+        meta.className = "msg-meta";
+        meta.textContent = `${senderType.charAt(0).toUpperCase() + senderType.slice(1)} · ${time || now()}`;
+
+        bubble.append(body, meta);
+        row.appendChild(bubble);
+        messagesEl.appendChild(row);
+        scrollBottom();
+        return body;
+    }
+
+    function showTyping()  { typingEl.style.display = "flex"; scrollBottom(); }
+    function hideTyping()  { typingEl.style.display = "none"; }
+    function setDisabled(v) { if (sendBtn) sendBtn.disabled = v; if (inputEl) inputEl.disabled = v; }
 
     function closeChat(statusText) {
         statusEl.textContent = statusText;
         formEl.style.display = "none";
-        closedBannerEl.style.display = "block";
-        closedBannerEl.textContent = `This chat session is ${statusText}.`;
+        closedBanner.style.display = "block";
+        closedBanner.innerHTML = `This chat session is <strong>${escapeHtml(statusText)}</strong>.`;
     }
 
     socket.onmessage = function(event) {
         const data = JSON.parse(event.data);
 
+        if (data.type === "stream_start") {
+            hideTyping();
+            const row = document.createElement("div");
+            row.className = "chat-row chat-row--agent";
+            const bubble = document.createElement("div");
+            bubble.className = "chat-bubble agent-msg";
+            const body = document.createElement("div");
+            body.className = "message-body";
+            const meta = document.createElement("div");
+            meta.className = "msg-meta";
+            meta.textContent = `Agent · ${now()}`;
+            bubble.append(body, meta);
+            row.appendChild(bubble);
+            messagesEl.appendChild(row);
+            streamingBody = body;
+            streamingText = "";
+            scrollBottom();
+            return;
+        }
+
+        if (data.type === "token") {
+            streamingText += data.content;
+            if (streamingBody) {
+                streamingBody.textContent = streamingText
+                    .replace(/\[AUTOMATION:[^\]]*\]\n?/gi, "")
+                    .replace(/\[STATUS:[^\]]*\]\n?/gi, "");
+                scrollBottom();
+            }
+            return;
+        }
+
+        if (data.type === "stream_end") {
+            if (streamingBody) {
+                const clean = streamingText
+                    .replace(/\[AUTOMATION:[^\]]*\]\n?/gi, "")
+                    .replace(/\[STATUS:[^\]]*\]\n?/gi, "")
+                    .trim();
+                streamingBody.innerHTML = DOMPurify.sanitize(marked.parse(clean));
+                streamingBody = null;
+                streamingText = "";
+            }
+            setDisabled(false);
+            scrollBottom();
+            return;
+        }
+
         if (data.type === "message") {
-            appendMessage(data.sender_type, data.message);
+            if (data.sender_type === "user" && shownUserMsgs.has(data.message)) {
+                shownUserMsgs.delete(data.message);
+                return;
+            }
+            if (data.sender_type === "admin" && isAdmin) {
+                // already shown locally; just re-enable the form
+                hideTyping();
+                setDisabled(false);
+                return;
+            }
+            if (data.sender_type !== "agent") {
+                appendMessage(data.sender_type, data.message);
+            }
             return;
         }
-
-        if (data.type === "system") {
-            appendMessage("system", data.message);
-            return;
-        }
-
-        if (data.type === "error") {
-            appendMessage("system", data.message);
-            formEl.style.display = "none";
-            return;
-        }
-
+        if (data.type === "system") { appendMessage("system", data.message); return; }
+        if (data.type === "error")  { appendMessage("system", data.message); formEl.style.display = "none"; return; }
         if (data.type === "status_update") {
             statusEl.textContent = data.ticket_status;
-
             if (data.chat_status === "Resolved" || data.chat_status === "Escalated") {
                 closeChat(data.chat_status);
             }
         }
     };
 
-    socket.onclose = function () {
-        // Intentionally silent to avoid scary/noisy disconnect messages on normal reloads/navigation
-    };
+    socket.onclose = function() {};
 
-    formEl.addEventListener("submit", function(e) {
-        e.preventDefault();
+    if (formEl) {
+        inputEl.addEventListener("keydown", function(e) {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                formEl.dispatchEvent(new Event("submit"));
+            }
+        });
 
-        const message = inputEl.value.trim();
-        if (!message) return;
+        formEl.addEventListener("submit", function(e) {
+            e.preventDefault();
+            const message = inputEl.value.trim();
+            if (!message) return;
 
-        socket.send(message);
-        inputEl.value = "";
-        inputEl.focus();
+            if (isAdmin) {
+                appendMessage("admin", message);
+            } else {
+                shownUserMsgs.add(message);
+                appendMessage("user", message);
+            }
+
+            socket.send(message);
+            inputEl.value = "";
+            inputEl.focus();
+            setDisabled(true);
+            showTyping();
+        });
+    }
+
+    document.querySelectorAll(".markdown-body").forEach(el => {
+        el.innerHTML = DOMPurify.sanitize(marked.parse(el.textContent));
     });
+
+    scrollBottom();
 })();
 </script>
-
 {% endblock %}

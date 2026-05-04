@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, Query
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import User, Ticket
+from app.limiter import limiter
+from app.models import User, Ticket, AuditLog
 from app.services.ai_classifier import classify_ticket
 from app.services.ai_triage import triage_ticket
 from app.services.automation import save_ticket
@@ -49,12 +50,26 @@ def show_submit_ticket(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/my-tickets", response_class=HTMLResponse)
-def my_tickets_page(request: Request, db: Session = Depends(get_db)):
+def my_tickets_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    status_filter: str = Query(default=""),
+    category_filter: str = Query(default=""),
+):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
-    tickets = db.query(Ticket).filter_by(user_id=user.id).order_by(Ticket.id.desc()).all()
+    query = db.query(Ticket).filter(Ticket.user_id == user.id)
+    if status_filter:
+        query = query.filter(Ticket.status == status_filter)
+    if category_filter:
+        query = query.filter(Ticket.category == category_filter)
+    tickets = query.order_by(Ticket.id.desc()).all()
+
+    all_tickets = db.query(Ticket).filter(Ticket.user_id == user.id).all()
+    all_statuses = sorted({t.status for t in all_tickets if t.status})
+    all_categories = sorted({t.category for t in all_tickets if t.category})
 
     return templates.TemplateResponse(
         request,
@@ -62,29 +77,42 @@ def my_tickets_page(request: Request, db: Session = Depends(get_db)):
         {
             "request": request,
             "current_user": user,
-            "tickets": tickets
+            "tickets": tickets,
+            "all_statuses": all_statuses,
+            "all_categories": all_categories,
+            "status_filter": status_filter,
+            "category_filter": category_filter,
         }
     )
 
 
 @router.post("/submit-ticket", response_class=HTMLResponse)
+@limiter.limit("10/minute")
 def submit_ticket(
     request: Request,
-    device_type: str = Form(...),
-    urgency: str = Form(...),
-    issue_description: str = Form(...),
+    device_type: str = Form(..., max_length=100),
+    urgency: str = Form(..., max_length=50),
+    issue_description: str = Form(..., max_length=3000),
     db: Session = Depends(get_db)
 ):
     user = get_current_user(request, db)
     if not user:
         return RedirectResponse(url="/login", status_code=303)
 
+    past_tickets = (
+        db.query(Ticket)
+        .filter(Ticket.user_id == user.id)
+        .order_by(Ticket.id.desc())
+        .limit(5)
+        .all()
+    )
+
     # Keep your current classifier as a fallback / compatibility layer
     base_result = classify_ticket(issue_description, device_type, urgency)
 
     # Try the new structured AI triage first
     try:
-        triage = triage_ticket(issue_description, device_type, urgency)
+        triage = triage_ticket(issue_description, device_type, urgency, past_tickets=past_tickets)
     except Exception:
         triage = {
             "predicted_issue_type": base_result.get("category", "General"),
@@ -132,3 +160,40 @@ def submit_ticket(
     ticket = save_ticket(db, ticket_data, triage_data=triage)
 
     return RedirectResponse(url=f"/chat/{ticket.id}", status_code=303)
+
+
+@router.get("/ticket/{ticket_id}", response_class=HTMLResponse)
+def ticket_detail(ticket_id: int, request: Request, db: Session = Depends(get_db)):
+    user = get_current_user(request, db)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        return RedirectResponse(url="/my-tickets", status_code=303)
+
+    if user.role != "admin" and ticket.user_id != user.id:
+        return RedirectResponse(url="/my-tickets", status_code=303)
+
+    audit_logs = (
+        db.query(AuditLog)
+        .filter(AuditLog.ticket_id == ticket_id)
+        .order_by(AuditLog.id.desc())
+        .all()
+    )
+
+    assignee = None
+    if ticket.assigned_to_user_id:
+        assignee = db.query(User).filter(User.id == ticket.assigned_to_user_id).first()
+
+    return templates.TemplateResponse(
+        request,
+        "ticket_detail.html",
+        {
+            "request": request,
+            "current_user": user,
+            "ticket": ticket,
+            "audit_logs": audit_logs,
+            "assignee": assignee,
+        }
+    )

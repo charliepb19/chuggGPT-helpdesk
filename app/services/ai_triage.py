@@ -2,12 +2,11 @@ import json
 import os
 from typing import Any, Dict
 
-from openai import OpenAI
+import anthropic
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
-SYSTEM_PROMPT = """
-You are an AI triage engine for an IT helpdesk SaaS called ChuggOps.
+SYSTEM_PROMPT = """You are an AI triage engine for an IT helpdesk platform called ChuggGPT.
 
 Your job:
 - classify the helpdesk issue
@@ -43,56 +42,63 @@ Rules:
 - confidence_score must be between 0.0 and 1.0
 - if unsure, lower confidence
 - if the issue affects many users or business-critical systems, escalation_needed should usually be true
+- if the user has had the same or similar issue before (visible in ticket history), increase severity and strongly consider escalation_needed=true
+- if a recurring issue has been resolved before, note that in the summary
 - only suggest realistic IT helpdesk automations
 - if no automation is appropriate, set automation_eligible false and suggested_automation to null
 - recommended_script should usually match the automation name if one exists
-- return JSON only, no markdown
-"""
+- return JSON only, no markdown, no explanation"""
+
+_FALLBACK = {
+    "predicted_issue_type": "General",
+    "predicted_priority": "Medium",
+    "business_impact": "single_user",
+    "confidence_score": 0.25,
+    "automation_eligible": False,
+    "suggested_automation": None,
+    "recommended_script": None,
+    "escalation_needed": True,
+    "escalation_reason": "Model returned invalid JSON.",
+    "summary": "Manual review recommended.",
+    "suggested_steps": [
+        "Review the ticket manually",
+        "Ask the user for more details",
+        "Escalate if the issue appears broad or high impact",
+    ],
+}
 
 
-def triage_ticket(issue_description: str, device_type: str, urgency: str) -> Dict[str, Any]:
-    user_prompt = f"""
-Device type:
-{device_type}
+def _format_past_tickets(past_tickets) -> str:
+    if not past_tickets:
+        return ""
+    lines = ["User's recent ticket history (use this to detect recurring issues and adjust severity):"]
+    for t in past_tickets:
+        escalated = " [was escalated]" if t.ai_escalation_needed else ""
+        lines.append(f"  - #{t.id} | {t.category} | {t.status}{escalated}: {t.summary}")
+    return "\n".join(lines)
 
-Urgency:
-{urgency}
 
-Issue description:
-{issue_description}
-"""
+def triage_ticket(issue_description: str, device_type: str, urgency: str, past_tickets=None) -> Dict[str, Any]:
+    history_block = _format_past_tickets(past_tickets)
+    user_prompt = f"""Device type: {device_type}
+Urgency: {urgency}
+Issue description: {issue_description}
+{chr(10) + history_block if history_block else ""}"""
 
-    response = client.chat.completions.create(
-        model="gpt-4.1-mini",
+    response = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
         temperature=0.2,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_prompt},
-        ],
+        system=SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_prompt}],
     )
 
-    raw = response.choices[0].message.content.strip()
+    raw = response.content[0].text.strip()
 
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError:
-        parsed = {
-            "predicted_issue_type": "General",
-            "predicted_priority": "Medium",
-            "business_impact": "single_user",
-            "confidence_score": 0.25,
-            "automation_eligible": False,
-            "suggested_automation": None,
-            "recommended_script": None,
-            "escalation_needed": True,
-            "escalation_reason": "Model returned invalid JSON.",
-            "summary": "Manual review recommended.",
-            "suggested_steps": [
-                "Review the ticket manually",
-                "Ask the user for more details",
-                "Escalate if the issue appears broad or high impact"
-            ],
-        }
+        parsed = dict(_FALLBACK)
 
     if not isinstance(parsed.get("confidence_score"), (int, float)):
         parsed["confidence_score"] = 0.25

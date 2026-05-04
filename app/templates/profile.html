@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container auth-card">
+    <h1>My Profile</h1>
+    <p class="kicker">Update your name or change your password.</p>
+
+    <div class="page-meta">
+        <div class="meta-chip"><strong>Email</strong> {{ current_user.email }}</div>
+        <div class="meta-chip"><strong>Role</strong> {{ current_user.role|capitalize }}</div>
+    </div>
+
+    {% if success %}
+    <div class="profile-success">{{ success }}</div>
+    {% endif %}
+
+    {% if error %}
+    <div class="profile-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/profile" class="ticket-form">
+
+        <label>Name</label>
+        <input type="text" name="name" value="{{ current_user.name }}" required>
+
+        <h2>Change Password</h2>
+        <p class="form-note">Leave these blank to keep your current password.</p>
+
+        <label>Current Password</label>
+        <input type="password" name="current_password" placeholder="••••••••" autocomplete="current-password">
+
+        <label>New Password</label>
+        <input type="password" name="new_password" placeholder="••••••••" autocomplete="new-password">
+
+        <label>Confirm New Password</label>
+        <input type="password" name="confirm_password" placeholder="••••••••" autocomplete="new-password">
+
+        <button type="submit">Save Changes</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_styles %}
+<style>
+.profile-success {
+    background: #0a2a10;
+    border-top: 2px solid #1a6a30;
+    border-left: 2px solid #1a6a30;
+    border-right: 2px solid #001008;
+    border-bottom: 2px solid #001008;
+    color: #7ac87a;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+}
+
+.profile-error {
+    background: #3a0a0a;
+    border-top: 2px solid #7a1a1a;
+    border-left: 2px solid #7a1a1a;
+    border-right: 2px solid #100000;
+    border-bottom: 2px solid #100000;
+    color: #e87a7a;
+    font-weight: 700;
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    margin-bottom: 18px;
+}
+</style>
+{% endblock %}

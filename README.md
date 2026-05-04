@@ -1,383 +1,167 @@
 # ChuggGPT AI Helpdesk
 
-AI-Native IT Support Operations Platform
-
-## System Architecture
-
-![Architecture Diagram](screenshots/architecture_diagram.png)
-
-
-ChuggGPT AI Helpdesk is an AI-powered IT support platform built with FastAPI, WebSockets, SQLAlchemy, SQLite, Jinja2, and the OpenAI API. It helps users submit support tickets, receive AI-guided troubleshooting in real time, and enables admins to manage ticket operations through a centralized dashboard.
-
-## Overview
-
-This project was built to simulate a modern AI-native IT helpdesk experience. It combines classic support workflows with AI ticket triage, live troubleshooting chat, automation execution, and audit logging.
-
-ChuggGPT is designed to feel like an early-stage SaaS platform rather than just a basic CRUD app.
+A full-stack AI-powered IT helpdesk platform built as a self-directed side project by **Charlie Bailey**, incoming Cybersecurity student at **Kennesaw State University**. Built to learn and improve skills in application development and AI integration — not for a class, not for a grade.
 
 ---
 
-# Features
+## Screenshots
 
-## User Features
+### Homepage
+![Homepage](screenshots/homepage.png)
 
-- User signup and login
-- Ticket submission form
-- Ticket history view
-- Real-time AI support chat via WebSockets
-- AI-guided troubleshooting workflow
+### Submit Ticket
+![Submit Ticket](screenshots/submit_ticket.png)
 
-## Admin Features
+### AI Support Chat
+![AI Chat](screenshots/chat.png)
 
-- Admin dashboard with ticket overview
-- Ticket filtering by name, status, category, and severity
-- Ticket claiming and assignment
-- Ticket status updates
-- Automation execution
-- Audit log visibility
+### My Tickets
+![My Tickets](screenshots/my_tickets.png)
 
-## AI Features
+### Admin Dashboard
+![Admin Dashboard](screenshots/dashboard.png)
 
-- AI ticket triage on submission
-- Category prediction
-- Severity prediction
-- Business impact estimation
-- Confidence scoring
-- Escalation flagging
-- Suggested automation recommendations
-- AI support chat that responds interactively
+### Ticket Detail
+![Ticket Detail](screenshots/ticket_detail.png)
 
-## Automation Features
+---
 
-- Simulated automation execution
+## What It Does
+
+Users submit IT support tickets. The moment a ticket lands, Claude (claude-sonnet-4-6) triages it — predicting category, severity, business impact, and escalation risk — and opens a live chat session. The AI support agent streams responses in real time over WebSocket, walks the user through troubleshooting step by step, and can trigger simulated diagnostic automations. Admins get a full dashboard with filters, status controls, assignment, automation execution, and an audit log.
+
+---
+
+## Features
+
+**User**
+- Account signup and login
+- Ticket submission
+- Ticket history with filters
+- Real-time AI chat (streaming over WebSocket)
+
+**AI**
+- Ticket triage on submission: category, severity, business impact, confidence score, escalation flag
+- Streaming chat agent that troubleshoots step by step and asks follow-up questions
+- Automation marker extraction — AI can trigger safe diagnostics mid-conversation
+- Conversation history passed back to Claude each turn for context continuity
+
+**Admin**
+- Full ticket queue with search and filters (status, category, severity, name)
+- Ticket claiming, assignment, and status updates
+- One-click automation execution from the dashboard
+- Audit log for all actions
+
+**Automation (simulated)**
 - DNS flush
 - Network reset
 - Printer restart
 - Disk cleanup
-- Automation logging and audit trail
-- Risk-aware automation policy foundation
+- Password reset workflow
+- Risk-level policy — high-risk automations block when triggered by AI, require admin confirmation
+
+**Security**
+- Session-based auth via signed cookies (Starlette SessionMiddleware)
+- WebSocket authentication reads from session — user ID is never trusted from the client
+- XSS prevention: all markdown rendered through DOMPurify before hitting the DOM
+- Rate limiting on login (10/min), signup (5/min), and ticket submission (10/min) via slowapi
+- Input length caps on all user-facing fields
+- Security headers on every response: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`
+- Cascade delete — removing a ticket cleans up all child records (chat sessions, messages, predictions, automation runs)
+- `.env` and database file excluded from version control
 
 ---
 
-# Tech Stack
+## Tech Stack
 
-Backend
-- FastAPI
-- SQLAlchemy
-- SQLite
-
-Frontend
-- Jinja2 templates
-- HTML
-- CSS
-- JavaScript
-
-AI
-- OpenAI API
-
-Other
-- WebSockets
-- Session-based authentication
-
----
-
-# System Architecture
-
-
-User / Admin
-|
-v
-FastAPI Routes
-|
-+--> Auth
-+--> Tickets
-+--> Dashboard
-+--> Chat
-|
-v
-Services Layer
-|
-+--> AI Classifier
-+--> AI Triage
-+--> Chat Agent
-+--> Automation Engine
-+--> Automation Policy
-|
-v
-SQLite Database
-|
-+--> Users
-+--> Tickets
-+--> Audit Logs
-+--> Chat Sessions
-+--> Chat Messages
-+--> Ticket Predictions
-+--> Automation Runs
-
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI, SQLAlchemy, SQLite |
+| Frontend | Jinja2, HTML, CSS, JavaScript |
+| AI | Anthropic API (claude-sonnet-4-6) |
+| Real-time | WebSockets |
+| Auth | Starlette SessionMiddleware |
+| Rate limiting | slowapi |
+| Markdown | marked.js + DOMPurify |
 
 ---
 
 ## Project Structure
 
 ```
-chuggGPT-helpdesk
-│
-├── app
-│   ├── routes
-│   │   ├── auth.py
-│   │   ├── tickets.py
-│   │   ├── dashboard.py
-│   │   └── chat.py
-│   │
-│   ├── services
-│   │   ├── ai_classifier.py
-│   │   ├── ai_triage.py
-│   │   ├── chat_agent.py
-│   │   ├── automation.py
+chuggGPT-helpdesk/
+├── app/
+│   ├── routes/
+│   │   ├── auth.py          # Login, signup, profile, logout
+│   │   ├── tickets.py       # Submit, my-tickets, ticket detail
+│   │   ├── dashboard.py     # Admin dashboard and actions
+│   │   └── chat.py          # Chat page + WebSocket handler
+│   ├── services/
+│   │   ├── ai_triage.py     # Structured ticket triage via Claude
+│   │   ├── chat_agent.py    # Streaming chat agent
+│   │   ├── automation.py    # Automation execution and audit logging
 │   │   └── automation_policy.py
-│   │
-│   ├── templates
-│   │   ├── base.html
-│   │   ├── login.html
-│   │   ├── signup.html
-│   │   ├── submit_ticket.html
-│   │   ├── my_tickets.html
-│   │   ├── dashboard.html
-│   │   └── chat.html
-│   │
-│   ├── static
-│   │   └── style.css
-│   │
+│   ├── templates/           # Jinja2 HTML templates
+│   ├── static/              # CSS and images
 │   ├── database.py
 │   ├── models.py
+│   ├── limiter.py           # slowapi rate limiter
 │   ├── main.py
 │   └── create_admin.py
-│
-├── screenshots
-│
+├── screenshots/
 ├── requirements.txt
-├── README.md
+├── .env.example
 └── .gitignore
 ```
 
 ---
 
-# How the System Works
+## Running Locally
 
-## Ticket Submission
-
-A user submits an IT support ticket including:
-
-- device type
-- urgency level
-- issue description
-
----
-
-## AI Ticket Triage
-
-After submission, the AI system analyzes the ticket and predicts:
-
-- category
-- severity
-- business impact
-- automation possibilities
-
-The result is stored in the database.
-
----
-
-## Real-Time AI Support Chat
-
-A chat session is automatically created.
-
-The AI agent:
-
-- guides troubleshooting
-- asks follow-up questions
-- can trigger automations
-- escalates issues when needed
-
----
-
-## Automation Execution
-
-Automations simulate real IT operations such as:
-
-- flushing DNS
-- restarting printers
-- resetting network configurations
-- disk cleanup
-
-Each automation is logged for auditing.
-
----
-
-## Admin Dashboard
-
-Admins can:
-
-- review tickets
-- claim tickets
-- update statuses
-- execute automations
-- review audit logs
-
----
-
-# Running the Project Locally
-
-## Clone the repository
+```bash
+# Clone
 git clone https://github.com/charliepb19/chuggGPT-helpdesk.git
-
 cd chuggGPT-helpdesk
 
+# Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1      # Windows
+source venv/bin/activate          # macOS/Linux
 
----
-
-## Create virtual environment
-
-
-py -m venv venv
-
-
----
-
-## Activate environment
-
-Windows:
-
-
-.\venv\Scripts\Activate.ps1
-
-
----
-
-## Install dependencies
-
-
+# Install dependencies
 pip install -r requirements.txt
 
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY and a long random SESSION_SECRET
 
----
-
-## Add OpenAI API Key
-
-Create an environment variable or `.env` file:
-
-
-OPENAI_API_KEY=your_api_key_here
-
-
----
-
-## Start the server
-
-
+# Start the server
 uvicorn app.main:app --reload
+```
 
-
----
-
-## Open the app
-
-
-http://127.0.0.1:8000
-
+Open `http://127.0.0.1:8000`
 
 ---
 
-# Creating an Admin Account
+## Creating an Admin Account
 
-Run:
-
-
+```bash
 python -m app.create_admin
+```
 
-
-Then log in with the generated admin credentials.
-
----
-
-# Screenshots
-
-Add screenshots here later.
-
-Example:
-
-
-## Login Page
-
-![Login](screenshots/login.png)
-
-
-## Submit Ticket
-
-![Submit Ticket](screenshots/submit-ticket.png)
-
-
-## My Tickets Dashboard
-
-![My Tickets](screenshots/my_tickets.png)
-
-
-## AI Support Chat
-
-![AI Chat](screenshots/chat.png)
-
-
-## AI Automation Execution
-
-![Automation](screenshots/chat_submit.png)
-
-
-## Admin Dashboard
-
-![Dashboard](screenshots/dashboard1.png)
-
-![Dashboard](screenshots/dashboard2.png)
-
-![Dashboard](screenshots/dashboard3.png)
-
-![Dashboard](screenshots/dashboard4.png)
-
+Follow the prompts, then log in with those credentials to access the dashboard.
 
 ---
 
-# Why This Project Is Interesting
+## Environment Variables
 
-This project demonstrates real-world skills including:
-
-- backend API development
-- AI integration
-- real-time systems
-- system automation
-- SaaS-style application design
-
-It showcases concepts used in modern AI-powered support platforms.
+| Variable | Description |
+|---|---|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+| `SESSION_SECRET` | Long random string for signing session cookies |
 
 ---
 
-# Future Improvements
-
-Potential enhancements include:
-
-- AI incident clustering
-- duplicate ticket detection
-- knowledge base integration
-- AI embeddings for troubleshooting search
-- analytics dashboards
-- approval workflows for automations
-- Slack or email integrations
-
----
-
-# Resume Summary
-
-Built an AI-powered IT helpdesk platform using FastAPI, SQLAlchemy, SQLite, WebSockets, and the OpenAI API. Implemented automated ticket triage, real-time AI troubleshooting chat, admin operations tooling, and automation execution workflows.
-
----
-
-# License
+## License
 
 MIT

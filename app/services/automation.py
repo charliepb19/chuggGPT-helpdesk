@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 
 from app.models import Ticket, AuditLog, User, ChatSession, ChatMessage, TicketPrediction, AutomationRun
-from app.services.chat_agent import generate_initial_agent_message
+from app.services.chat_agent import generate_initial_agent_message, _strip_status
 from app.services.automation_policy import get_automation_policy
 
 
@@ -125,7 +125,7 @@ def create_chat_session_for_ticket(db: Session, ticket: Ticket):
     # Reuse existing session if one already exists for this ticket
     existing_session = (
         db.query(ChatSession)
-        .filter(ChatSession.ticket_id == ticket.id)
+        .filter(ChatSession.ticket_id == ticket.id, ChatSession.user_id == ticket.user_id)
         .order_by(ChatSession.id.desc())
         .first()
     )
@@ -142,9 +142,18 @@ def create_chat_session_for_ticket(db: Session, ticket: Ticket):
     db.commit()
     db.refresh(session)
 
-    initial_message_raw = generate_initial_agent_message(ticket)
+    from app.models import Ticket as TicketModel
+    past_tickets = (
+        db.query(TicketModel)
+        .filter(TicketModel.user_id == ticket.user_id, TicketModel.id != ticket.id)
+        .order_by(TicketModel.id.desc())
+        .limit(5)
+        .all()
+    ) if ticket.user_id else []
+
+    initial_message_raw = generate_initial_agent_message(ticket, past_tickets=past_tickets)
     automation_name = extract_automation_marker(initial_message_raw)
-    initial_message = remove_automation_marker(initial_message_raw)
+    initial_message = _strip_status(remove_automation_marker(initial_message_raw))
 
     message = ChatMessage(
         chat_session_id=session.id,
@@ -370,6 +379,8 @@ def get_dashboard_data(
     all_severities = sorted({ticket.severity for ticket in all_tickets if ticket.severity})
     all_statuses = ["Open", "In Progress", "Resolved", "Escalated"]
 
+    admin_users = db.query(User).filter(User.role == "admin").order_by(User.name).all()
+
     return {
         "category_counts": category_counts,
         "severity_counts": severity_counts,
@@ -384,4 +395,5 @@ def get_dashboard_data(
         "all_categories": all_categories,
         "all_severities": all_severities,
         "all_statuses": all_statuses,
+        "admin_users": admin_users,
     }
