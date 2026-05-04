@@ -1,6 +1,6 @@
 # ChuggGPT AI Helpdesk
 
-A full-stack AI-powered IT helpdesk platform built as a self-directed side project by **Charlie Bailey**, incoming Cybersecurity student at **Kennesaw State University**. Built to learn and improve skills in application development and AI integration — not for a class, not for a grade.
+A full-stack AI-powered IT helpdesk platform built as a self-directed side project by **Charlie Bailey**, Cybersecurity student at **Kennesaw State University**. Built to learn and improve skills in application development and AI integration — not for a class, not for a grade.
 
 ---
 
